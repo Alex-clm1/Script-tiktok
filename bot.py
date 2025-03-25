@@ -1,19 +1,18 @@
 import asyncio
 import unicodedata
-import customtkinter as ctk
 from TikTokLive import TikTokLiveClient
 from TikTokLive.events import CommentEvent
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
 from gtts import gTTS
 from playsound import playsound
 import os
 import json
-import threading
 
 USERNAME = "songzz.vfr"
-user_points = {}
 
-ctk.set_appearance_mode("dark")  # Modes: "light", "dark", "system"
-ctk.set_default_color_theme("green")
+user_points = {}
 
 def load_questions():
     try:
@@ -23,6 +22,7 @@ def load_questions():
         return []
 
 questions_and_answers = load_questions()
+
 current_question_index = 0
 waiting_for_answer = False
 current_expected_answer = ""
@@ -47,7 +47,7 @@ def speak_text(text):
         print("Erreur lors de la lecture audio :", e)
 
 async def game_loop():
-    global current_question_index, waiting_for_answer, current_expected_answer, already_answered, winner_of_the_question, questions_and_answers
+    global current_question_index, waiting_for_answer, current_expected_answer, already_answered, questions_and_answers, winner_of_the_question
 
     while current_question_index < len(questions_and_answers):
         question = questions_and_answers[current_question_index]["question"]
@@ -68,7 +68,8 @@ async def game_loop():
             message = f"La réponse est : {expected_answer}. Personne n'a trouvé la bonne réponse."
             update_question_display(message)
             print(message)
-            speak_text(message)
+            speak_text(f"La réponse est : {expected_answer}. Personne n'a trouvé la bonne réponse.")
+
 
         current_question_index += 1
         await asyncio.sleep(2)
@@ -81,101 +82,137 @@ async def game_loop():
     speak_text("Le quiz est terminé ! Voici le classement final.")
 
 def display_scores():
-    classement_text.configure(state='normal')
-    classement_text.delete("1.0", "end")
-    
     if not user_points:
-        classement_text.insert("end", "Aucun point marqué !")
+        classement_text.config(state='normal')
+        classement_text.delete(1.0, tk.END)
+        classement_text.insert(tk.END, "Aucun point marqué !")
+        classement_text.config(state='disabled')
     else:
         classement = sorted(user_points.items(), key=lambda x: x[1], reverse=True)
-        classement_text.insert("end", "🏆 Classement en direct :\n\n")
+        classement_text.config(state='normal')
+        classement_text.delete(1.0, tk.END)
+        classement_text.insert(tk.END, "🏆 Classement en direct :\n\n")
         for user, points in classement:
-            classement_text.insert("end", f"{user} : {points} point(s)\n")
-    
-    classement_text.configure(state='disabled')
+            classement_text.insert(tk.END, f"{user} : {points} point(s)\n")
+        classement_text.config(state='disabled')
 
 def update_question_display(message):
-    question_label.configure(text=message)
+    question_label.config(text=message)
 
 @client.on(CommentEvent)
 async def on_comment(event: CommentEvent):
     global waiting_for_answer, already_answered, winner_of_the_question
+
     user = event.user.nickname
     comment = normalize_text(event.comment)
 
     print(f"{user} a répondu : {event.comment}")
 
-    if waiting_for_answer and comment == current_expected_answer:
-        if not already_answered:
-            user_points[user] = user_points.get(user, 0) + 1
-            already_answered = True
-            winner_of_the_question = user
+    if waiting_for_answer:
+        if comment == current_expected_answer:
+            if not already_answered:
+                user_points[user] = user_points.get(user, 0) + 1
+                already_answered = True
+                winner_of_the_question = user
 
-            message = f"🎉 Bravo {user} + 1 point ! Total : {user_points[user]}"
-            print(message)
-            update_question_display(message)
-            speak_text(f"Bravo {user}, bonne réponse ! Tu gagnes 1 point.")
+                message = f"🎉 Bravo {user} + 1 point ! Total : {user_points[user]}"
+                print(message)
+                update_question_display(message)
+                speak_text(f"Bravo {user}, bonne réponse ! Tu gagnes 1 point.")
 
-            display_scores()
+                display_scores()
+            else:
+                print(f"{user} a aussi trouvé la bonne réponse, mais trop tard !")
+        else:
+            print(f"{user} a donné une mauvaise réponse.")
 
-
-# Initialisation
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("green")
-
-root = ctk.CTk()
+# === Initialisation de Tkinter ===
+root = tk.Tk()
 root.title("Quiz Time TikTok")
 root.geometry("1080x1920")
-root.configure(bg="#333333")  # Fond sombre pour contraster le carré vert
+root.configure(bg="#008000")
 
-# === Carré vert géant de 500x500 ===
-green_square = ctk.CTkFrame(
-    root,
-    width=500,
-    height=500,
-    fg_color="#00FF00",  # Vert vif
-    border_width=0       # Pas de bordure
-)
-green_square.pack(pady=100)
-green_square.pack_propagate(False)
+# === Nouveau fond ===
+# === Pas besoin de charger une image ===
+canvas = tk.Canvas(root, width=1080, height=1920, highlightthickness=0)
+canvas.pack(fill="both", expand=True)
 
-# === Zone de question (texte blanc) ===
-question_label = ctk.CTkLabel(
-    green_square,
+# === Crée un fond en dégradé simulé (simple avec une couleur unie par exemple) ===
+canvas.create_rectangle(0, 0, 1080, 1920, fill="#008000", outline="")
+
+# Tu peux jouer avec la couleur, voici d'autres couleurs stylées :
+# Bleu nuit : "#0f172a"
+# Violet néon : "#7c3aed"
+# Rose flashy : "#ec4899"
+
+
+# === Styles ===
+font_title = ("Helvetica", 36, "bold")
+font_text = ("Helvetica", 28)
+text_color = "#ffffff"
+
+# === Zone de question ===
+question_frame = tk.Frame(root, bg="#008000", bd=5, relief="ridge")
+question_frame.place(relx=0.5, y=150, anchor="center", width=900, height=160)
+
+question_label = tk.Label(
+    question_frame,
     text="En attente de la prochaine question...",
-    font=("Arial Rounded MT Bold", 18, "bold"),
-    fg_color="transparent",
-    text_color="white",
-    wraplength=400
+    font=font_title,
+    fg=text_color,
+    bg="#008000",
+    wraplength=850,
+    justify="center"
 )
-question_label.pack(pady=10, padx=10, fill="x")
+question_label.pack(expand=True, fill="both", padx=10, pady=10)
 
-# === Zone de classement (fond vert, texte blanc) ===
-classement_text = ctk.CTkTextbox(
-    green_square,
-    font=("Arial Rounded MT Bold", 16),
-    fg_color="#00FF00",     # Même vert que le carré
-    text_color="white",
-    wrap="word",
-    width=400,
-    height=200
+# === Zone de classement ===
+classement_frame = tk.Frame(root, bg="#008000", bd=5, relief="ridge")
+classement_frame.place(relx=0.5, rely=0.7, anchor="center", width=800, height=500)
+
+classement_label = tk.Label(
+    classement_frame,
+    text="🏆 Classement",
+    font=font_title,
+    fg=text_color,
+    bg="#008000"
 )
-classement_text.pack(pady=10)
-classement_text.configure(state='disabled')
+classement_label.pack(pady=10)
 
+classement_text = tk.Text(
+    classement_frame,
+    font=font_text,
+    fg=text_color,
+    bg="#008000",
+    bd=0,
+    height=15,
+    width=40
+)
+classement_text.pack(expand=True, fill="both", padx=10, pady=10)
+classement_text.config(state='disabled')
 
-
-# Lancement de l'interface
-root.mainloop()
-
+# === Bouton Quitter ===
+btn_quit = tk.Button(
+    root,
+    text="Fermer",
+    font=("Helvetica", 24, "bold"),
+    bg="#008000",
+    fg="white",
+    command=root.destroy
+)
+btn_quit.place(relx=0.5, rely=0.95, anchor="center", width=400, height=80)
 
 if __name__ == "__main__":
+    import threading
+
     def start_asyncio():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         asyncio.ensure_future(client.start())
         loop.run_until_complete(game_loop())
 
-    tiktok_thread = threading.Thread(target=start_asyncio, daemon=True)
+    tiktok_thread = threading.Thread(target=start_asyncio)
+    tiktok_thread.daemon = True
     tiktok_thread.start()
+
     root.mainloop()
