@@ -75,7 +75,7 @@ questions.json : Contient la liste des questions du quiz.
 
 Auteurs
 
-[Votre Nom]
+alex-clm1
 
 Licence
 
