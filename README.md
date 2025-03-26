@@ -77,7 +77,5 @@ Auteurs
 
 alex-clm1
 
-Licence
 
-Ce projet est sous licence MIT.
 
